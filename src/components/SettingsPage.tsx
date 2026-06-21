@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import type { User } from "@supabase/supabase-js";
+import type { User } from "firebase/auth";
 import type { UserSettings } from "../types";
-import { getUserSettings, upsertUserSettings } from "../lib/supabase";
+import { getUserSettings, upsertUserSettings } from "../lib/firebase";
 
 interface Props {
   user: User;
@@ -14,14 +14,13 @@ export default function SettingsPage({ user, onClose }: Props) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    getUserSettings(user.id).then(({ data }) => {
-      if (data) setSettings(data as UserSettings);
-    });
-  }, [user.id]);
+    const s = getUserSettings(user.uid);
+    if (s) setSettings(s as UserSettings);
+  }, [user.uid]);
 
-  async function handleSave() {
+  function handleSave() {
     setLoading(true);
-    await upsertUserSettings(user.id, settings);
+    upsertUserSettings(user.uid, settings);
     setSaved(true);
     setLoading(false);
     setTimeout(() => setSaved(false), 2000);

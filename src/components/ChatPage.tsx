@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { User } from "@supabase/supabase-js";
+import type { User } from "firebase/auth";
 import type { Message, UserSettings } from "../types";
 import { sendMessage, getLLMLabel } from "../lib/llm";
-import { saveMessage, getMessages, clearMessages, getUserSettings, isSupabaseConfigured } from "../lib/supabase";
+import { saveMessage, getMessages, clearMessages, getUserSettings, isFirebaseConfigured } from "../lib/firebase";
 
 interface Props {
   user: User;
@@ -20,20 +20,18 @@ export default function ChatPage({ user, onOpenSettings, onSignOut }: Props) {
   useEffect(() => {
     loadMessages();
     loadSettings();
-  }, [user.id]);
+  }, [user.uid]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function loadMessages() {
-    const { data } = await getMessages(user.id, 100);
-    if (data) setMessages(data as Message[]);
+  function loadMessages() {
+    setMessages(getMessages(user.uid, 100) as Message[]);
   }
 
-  async function loadSettings() {
-    const { data } = await getUserSettings(user.id);
-    if (data) setSettings(data as UserSettings);
+  function loadSettings() {
+    setSettings(getUserSettings(user.uid) as UserSettings);
   }
 
   const send = useCallback(async () => {
@@ -50,7 +48,7 @@ export default function ChatPage({ user, onOpenSettings, onSignOut }: Props) {
     setMessages((m) => [...m, userMsg]);
     setLoading(true);
 
-    await saveMessage(user.id, "user", text);
+    saveMessage(user.uid, "user", text);
 
     try {
       const res = await sendMessage({
@@ -69,7 +67,7 @@ export default function ChatPage({ user, onOpenSettings, onSignOut }: Props) {
         created_at: new Date().toISOString(),
       };
       setMessages((m) => [...m, botMsg]);
-      await saveMessage(user.id, "assistant", res.content, res.llm_used, res.category);
+      saveMessage(user.uid, "assistant", res.content, res.llm_used, res.category);
     } catch (e) {
       const err = e instanceof Error ? e.message : "Erro desconhecido";
       setMessages((m) => [
@@ -84,7 +82,7 @@ export default function ChatPage({ user, onOpenSettings, onSignOut }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, settings, user.id]);
+  }, [input, loading, settings, user.uid]);
 
   function handleKey(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -93,12 +91,12 @@ export default function ChatPage({ user, onOpenSettings, onSignOut }: Props) {
     }
   }
 
-  async function handleClear() {
-    await clearMessages(user.id);
+  function handleClear() {
+    clearMessages(user.uid);
     setMessages([]);
   }
 
-  const isLocal = !isSupabaseConfigured();
+  const isLocal = !isFirebaseConfigured();
   const hasNoKeys = !settings.gemini_key && !settings.claude_key && !settings.openai_key;
 
   return (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { signInWithGoogle, signInAnonymously } from "../lib/supabase";
+import { signInWithGoogle, signInAnonymously } from "../lib/firebase";
 
 export default function AuthPage() {
   const [loading, setLoading] = useState<"google" | "anon" | null>(null);

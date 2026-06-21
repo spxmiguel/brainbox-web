@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
-import { supabase, signOut, isSupabaseConfigured } from "./lib/supabase";
+import type { User } from "firebase/auth";
+import { onAuth, signOut, isFirebaseConfigured } from "./lib/firebase";
 import AuthPage from "./components/AuthPage";
 import ChatPage from "./components/ChatPage";
 import SettingsPage from "./components/SettingsPage";
@@ -8,12 +8,10 @@ import SettingsPage from "./components/SettingsPage";
 type View = "chat" | "settings";
 
 const LOCAL_USER = {
-  id: "local",
-  is_anonymous: true,
-  app_metadata: {},
-  user_metadata: {},
-  aud: "local",
-  created_at: new Date().toISOString(),
+  uid: "local",
+  isAnonymous: true,
+  email: null,
+  displayName: null,
 } as unknown as User;
 
 export default function App() {
@@ -22,22 +20,18 @@ export default function App() {
   const [view, setView] = useState<View>("chat");
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
+    if (!isFirebaseConfigured()) {
       setUser(LOCAL_USER);
       setLoading(false);
       return;
     }
 
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user ?? null);
+    const unsub = onAuth((u) => {
+      setUser(u);
       setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => sub.subscription.unsubscribe();
+    return unsub;
   }, []);
 
   if (loading) {
@@ -59,7 +53,7 @@ export default function App() {
       <ChatPage
         user={user}
         onOpenSettings={() => setView("settings")}
-        onSignOut={isSupabaseConfigured() ? signOut : () => {}}
+        onSignOut={isFirebaseConfigured() ? signOut : () => {}}
       />
     </div>
   );
