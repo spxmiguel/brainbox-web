@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import type { User } from "@supabase/supabase-js";
 import type { Message, UserSettings } from "../types";
 import { sendMessage, getLLMLabel } from "../lib/llm";
-import { saveMessage, getMessages, clearMessages, getUserSettings } from "../lib/supabase";
+import { saveMessage, getMessages, clearMessages, getUserSettings, isSupabaseConfigured } from "../lib/supabase";
 
 interface Props {
   user: User;
@@ -98,7 +98,8 @@ export default function ChatPage({ user, onOpenSettings, onSignOut }: Props) {
     setMessages([]);
   }
 
-  const isAnon = user.is_anonymous;
+  const isLocal = !isSupabaseConfigured();
+  const hasNoKeys = !settings.gemini_key && !settings.claude_key && !settings.openai_key;
 
   return (
     <div className="flex flex-col h-full" style={{ background: "var(--bg)" }}>
@@ -125,15 +126,31 @@ export default function ChatPage({ user, onOpenSettings, onSignOut }: Props) {
           >
             ⚙ Config
           </button>
-          <button
-            onClick={onSignOut}
-            className="text-xs px-3 py-1.5 rounded-lg transition-colors"
-            style={{ color: "var(--muted)", border: "1px solid var(--border)" }}
-          >
-            Sair
-          </button>
+          {!isLocal && (
+            <button
+              onClick={onSignOut}
+              className="text-xs px-3 py-1.5 rounded-lg transition-colors"
+              style={{ color: "var(--muted)", border: "1px solid var(--border)" }}
+            >
+              Sair
+            </button>
+          )}
         </div>
       </header>
+
+      {/* No-key warning banner */}
+      {hasNoKeys && (
+        <div
+          className="px-4 py-2 text-xs text-center shrink-0"
+          style={{ background: "rgba(234,179,8,0.15)", color: "#eab308", borderBottom: "1px solid rgba(234,179,8,0.3)" }}
+        >
+          Configure sua{" "}
+          <button onClick={onOpenSettings} className="underline font-semibold">
+            Gemini API Key
+          </button>{" "}
+          em Config para usar o BrainBox
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
@@ -144,9 +161,9 @@ export default function ChatPage({ user, onOpenSettings, onSignOut }: Props) {
             <p className="text-sm max-w-xs" style={{ color: "var(--muted)" }}>
               Pergunte qualquer coisa. O orquestrador escolhe a melhor IA automaticamente.
             </p>
-            {isAnon && (
+            {isLocal && (
               <p className="text-xs" style={{ color: "var(--muted)" }}>
-                Modo anônimo — histórico não salvo na nuvem
+                Modo local — histórico salvo no navegador
               </p>
             )}
           </div>

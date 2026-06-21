@@ -1,9 +1,25 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Message, UserSettings } from "../types";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const isSupabaseConfigured = () =>
+  Boolean(
+    supabaseUrl &&
+    supabaseAnonKey &&
+    supabaseUrl.startsWith("https://") &&
+    supabaseAnonKey.length > 20 &&
+    supabaseAnonKey !== "placeholder"
+  );
+
+export const supabase = createClient(
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder"
+);
+
+const LS_MESSAGES = "bb_messages";
+const LS_SETTINGS = "bb_settings";
 
 export async function signInWithGoogle() {
   return supabase.auth.signInWithOAuth({
@@ -13,51 +29,70 @@ export async function signInWithGoogle() {
 }
 
 export async function signInAnonymously() {
+  if (!isSupabaseConfigured()) return { data: null, error: null };
   return supabase.auth.signInAnonymously();
 }
 
 export async function signOut() {
+  if (!isSupabaseConfigured()) return { data: null, error: null };
   return supabase.auth.signOut();
 }
 
 export async function getUser() {
+  if (!isSupabaseConfigured()) return null;
   const { data } = await supabase.auth.getUser();
   return data.user;
 }
 
 export async function saveMessage(
-  userId: string,
+  _userId: string,
   role: "user" | "assistant",
   content: string,
   llm_used?: string,
   category?: string
 ) {
-  return supabase.from("memories").insert({
-    user_id: userId,
-    role,
-    content,
-    llm_used,
-    category,
-  });
+  if (!isSupabaseConfigured()) {
+    const msgs: Message[] = JSON.parse(localStorage.getItem(LS_MESSAGES) || "[]");
+    msgs.push({ id: crypto.randomUUID(), role, content, llm_used, category, created_at: new Date().toISOString() });
+    localStorage.setItem(LS_MESSAGES, JSON.stringify(msgs));
+    return { data: null, error: null };
+  }
+  return supabase.from("memories").insert({ user_id: _userId, role, content, llm_used, category });
 }
 
-export async function getMessages(userId: string, limit = 50) {
+export async function getMessages(_userId: string, limit = 50) {
+  if (!isSupabaseConfigured()) {
+    const msgs: Message[] = JSON.parse(localStorage.getItem(LS_MESSAGES) || "[]");
+    return { data: msgs.slice(-limit), error: null };
+  }
   return supabase
     .from("memories")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", _userId)
     .order("created_at", { ascending: true })
     .limit(limit);
 }
 
-export async function clearMessages(userId: string) {
-  return supabase.from("memories").delete().eq("user_id", userId);
+export async function clearMessages(_userId: string) {
+  if (!isSupabaseConfigured()) {
+    localStorage.removeItem(LS_MESSAGES);
+    return { data: null, error: null };
+  }
+  return supabase.from("memories").delete().eq("user_id", _userId);
 }
 
-export async function getUserSettings(userId: string) {
-  return supabase.from("user_settings").select("*").eq("user_id", userId).single();
+export async function getUserSettings(_userId: string) {
+  if (!isSupabaseConfigured()) {
+    const data: UserSettings = JSON.parse(localStorage.getItem(LS_SETTINGS) || "{}");
+    return { data, error: null };
+  }
+  return supabase.from("user_settings").select("*").eq("user_id", _userId).single();
 }
 
-export async function upsertUserSettings(userId: string, settings: object) {
-  return supabase.from("user_settings").upsert({ user_id: userId, ...settings, updated_at: new Date().toISOString() });
+export async function upsertUserSettings(_userId: string, settings: UserSettings) {
+  if (!isSupabaseConfigured()) {
+    localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
+    return { data: null, error: null };
+  }
+  return supabase.from("user_settings").upsert({ user_id: _userId, ...settings, updated_at: new Date().toISOString() });
 }

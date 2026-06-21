@@ -1,14 +1,27 @@
 import { jsx as _jsx } from "react/jsx-runtime";
 import { useEffect, useState } from "react";
-import { supabase, signOut } from "./lib/supabase";
+import { supabase, signOut, isSupabaseConfigured } from "./lib/supabase";
 import AuthPage from "./components/AuthPage";
 import ChatPage from "./components/ChatPage";
 import SettingsPage from "./components/SettingsPage";
+const LOCAL_USER = {
+    id: "local",
+    is_anonymous: true,
+    app_metadata: {},
+    user_metadata: {},
+    aud: "local",
+    created_at: new Date().toISOString(),
+};
 export default function App() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState("chat");
     useEffect(() => {
+        if (!isSupabaseConfigured()) {
+            setUser(LOCAL_USER);
+            setLoading(false);
+            return;
+        }
         supabase.auth.getUser().then(({ data }) => {
             setUser(data.user ?? null);
             setLoading(false);
@@ -26,5 +39,5 @@ export default function App() {
     if (view === "settings") {
         return _jsx(SettingsPage, { user: user, onClose: () => setView("chat") });
     }
-    return (_jsx("div", { style: { height: "100dvh", display: "flex", flexDirection: "column" }, children: _jsx(ChatPage, { user: user, onOpenSettings: () => setView("settings"), onSignOut: signOut }) }));
+    return (_jsx("div", { style: { height: "100dvh", display: "flex", flexDirection: "column" }, children: _jsx(ChatPage, { user: user, onOpenSettings: () => setView("settings"), onSignOut: isSupabaseConfigured() ? signOut : () => { } }) }));
 }

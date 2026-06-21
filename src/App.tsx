@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { supabase, signOut } from "./lib/supabase";
+import { supabase, signOut, isSupabaseConfigured } from "./lib/supabase";
 import AuthPage from "./components/AuthPage";
 import ChatPage from "./components/ChatPage";
 import SettingsPage from "./components/SettingsPage";
 
 type View = "chat" | "settings";
+
+const LOCAL_USER = {
+  id: "local",
+  is_anonymous: true,
+  app_metadata: {},
+  user_metadata: {},
+  aud: "local",
+  created_at: new Date().toISOString(),
+} as unknown as User;
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -13,6 +22,12 @@ export default function App() {
   const [view, setView] = useState<View>("chat");
 
   useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      setUser(LOCAL_USER);
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user ?? null);
       setLoading(false);
@@ -44,7 +59,7 @@ export default function App() {
       <ChatPage
         user={user}
         onOpenSettings={() => setView("settings")}
-        onSignOut={signOut}
+        onSignOut={isSupabaseConfigured() ? signOut : () => {}}
       />
     </div>
   );

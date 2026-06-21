@@ -77,10 +77,10 @@ export default function SettingsPage({ user, onClose }: Props) {
         <div className="glass rounded-2xl p-6 space-y-5">
           <div>
             <h3 className="text-sm font-semibold mb-1" style={{ color: "var(--accent-light)" }}>
-              API Keys (opcionais)
+              API Keys
             </h3>
             <p className="text-xs" style={{ color: "var(--muted)" }}>
-              Sem keys, Gemini gratuito é usado. Com sua key, você tem mais controle e limites maiores.
+              Adicione ao menos a Gemini Key (gratuita no Google AI Studio) para usar o BrainBox.
             </p>
           </div>
 
@@ -118,7 +118,7 @@ export default function SettingsPage({ user, onClose }: Props) {
           <p>• Código/debug → OpenAI (GPT-4o-mini)</p>
           <p>• Planejamento/arquitetura → Claude (Haiku)</p>
           <p>• Matemática/mockup/geral → Gemini Flash 2.0</p>
-          <p>• Sem key configurada → Gemini (chave compartilhada)</p>
+          <p>• Sem key → erro (ao menos Gemini é obrigatório)</p>
         </div>
       </div>
     </div>
